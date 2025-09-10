@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nutrition Assistant Chatbot</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .container {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(15px);
+        border-radius: 24px;
+        padding: 20px 30px 30px 30px;
+        width: 100%;
+        max-width: 800px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        display: flex;
+        flex-direction: column;
+        height: 85vh;
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 2.2em;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1px;
+    }
+
+    .chat-window {
+        flex: 1;
+        background: #f8f9fc;
+        border-radius: 16px;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        border: 1px solid #e8eaf6;
+    }
+
+    .chat-bubble {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 15px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .user-bubble {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 0;
+    }
+
+    .bot-bubble {
+        background: #fff;
+        border: 1px solid #e8eaf6;
+        color: #333;
+        align-self: flex-start;
+        border-bottom-left-radius: 0;
+    }
+
+    .telemetry-info {
+        font-size: 11px;
+        color: #666;
+        margin-top: 8px;
+        padding: 6px 8px;
+        background: #f5f5f7;
+        border-radius: 8px;
+        border-left: 3px solid #667eea;
+    }
+
+    .error-bubble {
+        background: #fee !important;
+        border-color: #fca5a5 !important;
+        color: #dc2626 !important;
+    }
+
+    @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+
+    .input-area {
+        display: flex;
+        margin-top: 10px;
+        gap: 8px;
+    }
+
+    .input-area input {
+        flex: 1;
+        padding: 12px 16px;
+        border-radius: 16px;
+        border: 2px solid #e8eaf6;
+        font-size: 15px;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+
+    .input-area input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    }
+
+    .input-area button {
+        padding: 12px 24px;
+        border-radius: 16px;
+        border: none;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .input-area button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .input-area button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .loading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #666;
+        font-style: italic;
+    }
+
+    .spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(102,126,234,0.2);
+        border-top: 2px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg); } }
+
+    .config-section {
+        margin-bottom: 10px;
+    }
+
+    .config-section input {
+        width: 100%;
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid #e8eaf6;
+        margin-top: 4px;
+        margin-bottom: 6px;
+    }
+
+    .telemetry-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+
+    .stats-summary {
+        font-size: 11px;
+        color: #666;
+        text-align: center;
+        margin-top: 8px;
+        padding: 6px;
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 8px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🥗 Nutrition Assistant</h1>
+
+    <div class="config-section">
+        <label for="webhookUrl">n8n Webhook URL:</label>
+        <input type="text" id="webhookUrl" placeholder="https://your-n8n-instance.com/webhook/your-webhook-id">
+        
+        <div class="telemetry-toggle">
+            <input type="checkbox" id="showTelemetry" checked>
+            <label for="showTelemetry">Show telemetry data</label>
+        </div>
+    </div>
+
+    <div class="chat-window" id="chatWindow">
+        <div class="bot-bubble">Hello! Ask me anything about nutrition 🍎
+            <div style="margin-top: 12px; font-size: 13px; color: #666; border-top: 1px solid #eee; padding-top: 8px;">
+                <strong>Try these queries:</strong><br>
+                • High protein snacks under 200 calories<br>
+                • Low sodium vegetables for hypertension<br>
+                • Iron-rich foods for anemia<br>
+                • 高蛋白低脂肪的食物推荐 (Chinese query test)<br>
+                • Gluten-free breakfast options with fiber<br>
+                • Best sources of omega-3 fatty acids
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-summary" id="statsSummary">
+        Session: 0 queries | Avg response: 0ms | Success rate: 100%
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="queryInput" placeholder="Type your question...">
+        <button onclick="sendQuery()" id="sendBtn">Send</button>
+    </div>
+</div>
+
+<script>
+    // Telemetry and session tracking
+    let sessionStats = {
+        totalQueries: 0,
+        successfulQueries: 0,
+        totalResponseTime: 0,
+        errors: []
+    };
+
+    // Load saved configurations
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedUrl = sessionStorage.getItem('webhookUrl');
+        if (savedUrl) document.getElementById('webhookUrl').value = savedUrl;
+        
+        const showTelemetry = sessionStorage.getItem('showTelemetry') !== 'false';
+        document.getElementById('showTelemetry').checked = showTelemetry;
+        
+        updateStatsDisplay();
+    });
+
+    document.getElementById('webhookUrl').addEventListener('change', function() {
+        sessionStorage.setItem('webhookUrl', this.value);
+    });
+
+    document.getElementById('showTelemetry').addEventListener('change', function() {
+        sessionStorage.setItem('showTelemetry', this.checked);
+    });
+
+    document.getElementById('queryInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !document.getElementById('sendBtn').disabled) {
+            sendQuery();
+        }
+    });
+
+    function logTelemetry(event, data) {
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            timestamp,
+            event,
+            sessionId: getSessionId(),
+            ...data
+        };
+        
+        console.log('[TELEMETRY]', logEntry);
+        
+        // Store in session for analytics
+        if (!window.telemetryLogs) window.telemetryLogs = [];
+        window.telemetryLogs.push(logEntry);
+    }
+
+    function getSessionId() {
+        if (!sessionStorage.getItem('sessionId')) {
+            sessionStorage.setItem('sessionId', 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9));
+        }
+        return sessionStorage.getItem('sessionId');
+    }
+
+    function parseResponse(rawResponse) {
+        let cleaned = rawResponse;
+        
+        // Remove markdown formatting artifacts
+        cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
+        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
+        cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Inline code
+        cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
+        cleaned = cleaned.replace(/#{1,6}\s*(.*)/g, '$1'); // Headers
+        
+        // Remove JSON artifacts and structural elements
+        cleaned = cleaned.replace(/^\s*[\{\[\"].*[\}\]\"]?\s*$/gm, ''); // JSON-like lines
+        cleaned = cleaned.replace(/^\s*[,\}\]]\s*$/gm, ''); // Trailing JSON punctuation
+        cleaned = cleaned.replace(/\"([^\"]*)\"\s*:\s*\"?([^\"]*?)\"?,?/g, '$1: $2'); // JSON key-value pairs
+        
+        // Clean up extra whitespace
+        cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n'); // Multiple blank lines
+        cleaned = cleaned.trim();
+        
+        // If the response looks like pure JSON, try to extract meaningful content
+        try {
+            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.response || parsed.answer || parsed.message) {
+                    cleaned = parsed.response || parsed.answer || parsed.message;
+                }
+            }
+        } catch (e) {
+            // Continue with string cleaning
+        }
+        
+        return cleaned || 'Response received but could not be parsed properly.';
+    }
+
+    function updateStatsDisplay() {
+        const avgResponseTime = sessionStats.totalQueries > 0 
+            ? Math.round(sessionStats.totalResponseTime / sessionStats.totalQueries)
+            : 0;
+        const successRate = sessionStats.totalQueries > 0 
+            ? Math.round((sessionStats.successfulQueries / sessionStats.totalQueries) * 100)
+            : 100;
+            
+        document.getElementById('statsSummary').textContent = 
+            `Session: ${sessionStats.totalQueries} queries | Avg response: ${avgResponseTime}ms | Success rate: ${successRate}%`;
+    }
+
+    async function sendQuery() {
+        const webhookUrl = document.getElementById('webhookUrl').value.trim();
+        const query = document.getElementById('queryInput').value.trim();
+        const chatWindow = document.getElementById('chatWindow');
+        const sendBtn = document.getElementById('sendBtn');
+        const showTelemetry = document.getElementById('showTelemetry').checked;
+
+        if (!webhookUrl) {
+            addBotMessage('❌ Please enter your n8n webhook URL first', true);
+            return;
+        }
+        if (!query) {
+            addBotMessage('❌ Please enter a question');
+            return;
+        }
+
+        // Update session stats
+        sessionStats.totalQueries++;
+        
+        // Log query start
+        logTelemetry('query_started', {
+            query: query,
+            queryLength: query.length,
+            webhookUrl: webhookUrl.replace(/\/[^\/]*$/, '/***') // Mask webhook ID
+        });
+
+        addUserMessage(query);
+        document.getElementById('queryInput').value = '';
+        sendBtn.disabled = true;
+        
+        const loadingId = addBotMessage('<div class="loading"><div class="spinner"></div>Fetching nutrition data...</div>', true);
+
+        try {
+            const startTime = Date.now();
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({chatInput: query})
+            });
+            const endTime = Date.now();
+            const responseTime = endTime - startTime;
+            
+            sessionStats.totalResponseTime += responseTime;
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const rawResult = await response.text();
+            const cleanedResult = parseResponse(rawResult);
+            
+            // Log successful response
+            logTelemetry('query_completed', {
+                responseTime,
+                responseLength: rawResult.length,
+                cleanedLength: cleanedResult.length,
+                httpStatus: response.status
+            });
+
+            sessionStats.successfulQueries++;
+
+            let displayMessage = cleanedResult;
+            if (showTelemetry) {
+                displayMessage += `<div class="telemetry-info">📊 Response time: ${responseTime}ms | Characters: ${cleanedResult.length}</div>`;
+            }
+
+            updateBotMessage(loadingId, displayMessage);
+
+        } catch (err) {
+            const errorMessage = `❌ Failed to get nutrition data: ${err.message}`;
+            
+            // Log error
+            logTelemetry('query_failed', {
+                error: err.message,
+                errorType: err.name || 'Unknown'
+            });
+            
+            sessionStats.errors.push({
+                timestamp: new Date().toISOString(),
+                error: err.message,
+                query: query
+            });
+
+            updateBotMessage(loadingId, errorMessage, true);
+        } finally {
+            sendBtn.disabled = false;
+            updateStatsDisplay();
+        }
+    }
+
+    function addUserMessage(msg) {
+        const chatWindow = document.getElementById('chatWindow');
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble user-bubble';
+        bubble.textContent = msg;
+        chatWindow.appendChild(bubble);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function addBotMessage(msg, isHtml = false, isError = false) {
+        const chatWindow = document.getElementById('chatWindow');
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble bot-bubble' + (isError ? ' error-bubble' : '');
+        
+        if (isHtml) {
+            bubble.innerHTML = msg;
+        } else {
+            bubble.textContent = msg;
+        }
+        
+        chatWindow.appendChild(bubble);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return bubble;
+    }
+
+    function updateBotMessage(bubble, msg, isError = false) {
+        bubble.className = 'chat-bubble bot-bubble' + (isError ? ' error-bubble' : '');
+        bubble.innerHTML = msg;
+        const chatWindow = document.getElementById('chatWindow');
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    // Export telemetry data for analysis
+    window.getTelemetryData = function() {
+        return {
+            sessionStats,
+            logs: window.telemetryLogs || [],
+            sessionId: getSessionId()
+        };
+    };
+
+    // Console helper for debugging
+    window.exportTelemetry = function() {
+        const data = window.getTelemetryData();
+        console.log('=== TELEMETRY EXPORT ===');
+        console.log(JSON.stringify(data, null, 2));
+        return data;
+    };
+</script>
+</body>
+</html>
