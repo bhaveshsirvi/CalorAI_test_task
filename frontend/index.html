@@ -284,38 +284,25 @@
     }
 
     function parseResponse(rawResponse) {
+        if (!rawResponse) return 'No response received';
+
         let cleaned = rawResponse;
-        
-        // Remove markdown formatting artifacts
-        cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1'); // Italic
-        cleaned = cleaned.replace(/`(.*?)`/g, '$1'); // Inline code
-        cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
-        cleaned = cleaned.replace(/#{1,6}\s*(.*)/g, '$1'); // Headers
-        
-        // Remove JSON artifacts and structural elements
-        cleaned = cleaned.replace(/^\s*[\{\[\"].*[\}\]\"]?\s*$/gm, ''); // JSON-like lines
-        cleaned = cleaned.replace(/^\s*[,\}\]]\s*$/gm, ''); // Trailing JSON punctuation
-        cleaned = cleaned.replace(/\"([^\"]*)\"\s*:\s*\"?([^\"]*?)\"?,?/g, '$1: $2'); // JSON key-value pairs
-        
-        // Clean up extra whitespace
-        cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n'); // Multiple blank lines
-        cleaned = cleaned.trim();
-        
-        // If the response looks like pure JSON, try to extract meaningful content
-        try {
-            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
-                if (parsed.response || parsed.answer || parsed.message) {
-                    cleaned = parsed.response || parsed.answer || parsed.message;
-                }
-            }
-        } catch (e) {
-            // Continue with string cleaning
-        }
-        
-        return cleaned || 'Response received but could not be parsed properly.';
+
+        // Remove Markdown formatting
+        cleaned = cleaned.replace(/\*\*\*(.*?)\*\*\*/g, '$1'); // Bold+italic
+        cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, '$1');     // Bold
+        cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');         // Italic
+        cleaned = cleaned.replace(/`(.*?)`/g, '$1');           // Inline code
+        cleaned = cleaned.replace(/```[\s\S]*?```/g, '');      // Code blocks
+        cleaned = cleaned.replace(/#{1,6}\s*(.*)/g, '$1');     // Headers
+
+        // Convert bullets to array
+        const items = cleaned
+            .split(/\n|\*/)          // Split on newlines or asterisks
+            .map(s => s.trim())      // Trim whitespace
+            .filter(s => s.length);  // Remove empty strings
+
+        return items.length ? items : [cleaned.trim()];
     }
 
     function updateStatsDisplay() {
