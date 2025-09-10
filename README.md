@@ -51,7 +51,7 @@ pip install -r requirements.txt
 
 * Open your n8n editor.
 * Copy the contents of `n8n/workflow.json` into the editor.
-* Configure **Supabase**, **Groq** (https://groq.com/) and **OpenAI** credentials.
+* Configure **Supabase**, **Groq** (https://groq.com/) and **OpenAI** credentials in their respective nodes.
 * Add your Supabase URL as a variable:
 
   ```
